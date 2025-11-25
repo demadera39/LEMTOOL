@@ -1,0 +1,5 @@
+{
+  "name": "LEMtool AI",
+  "description": "A graphical emotion measurement instrument for digital interfaces, powered by Gemini AI. Visualize and analyze user emotional responses to websites.",
+  "requestFramePermissions": []
+}

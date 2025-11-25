@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LEMtool AI</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 10C27.9086 10 10 27.9086 10 50C10 72.0914 27.9086 90 50 90C72.0914 90 90 72.0914 90 50' stroke='%23F26522' stroke-width='12' stroke-linecap='round'/%3E%3Cpath d='M50 25C36.1929 25 25 36.1929 25 50C25 63.8071 36.1929 75 50 75C63.8071 75 75 63.8071 75 50' stroke='%23555555' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M50 40C44.4772 40 40 44.4772 40 50C40 55.5228 44.4772 60 50 60' stroke='%23F26522' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class', 
+        theme: {
+          extend: {
+            colors: {
+              lem: {
+                orange: '#F26522',
+                dark: '#1a1a1a',
+                light: '#f5f5f5',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            keyframes: {
+               'progress-ring': {
+                  '0%': { strokeDashoffset: '251.2', transform: 'rotate(-90deg)' },
+                  '100%': { strokeDashoffset: '0', transform: 'rotate(-90deg)' },
+               },
+               'pulse-strong': {
+                  '0%, 100%': { transform: 'scale(1)', opacity: '0.8' },
+                  '50%': { transform: 'scale(1.15)', opacity: '1' },
+               },
+               'float': {
+                  '0%, 100%': { transform: 'translateY(0px)' },
+                  '50%': { transform: 'translateY(-5px)' },
+               }
+            },
+            animation: {
+               'progress-ring': 'progress-ring 0.8s linear forwards',
+               'pulse-strong': 'pulse-strong 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+               'float': 'float 3s ease-in-out infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ccc; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.378.0",
+    "@google/genai": "https://esm.sh/@google/genai@0.8.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
