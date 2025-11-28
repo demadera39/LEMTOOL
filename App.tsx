@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import Toolbar from './components/Toolbar';
 import AnalysisCanvas from './components/AnalysisCanvas';
 import ReportPanel from './components/ReportPanel';
-import AdminDashboard from './components/AdminDashboard';
+import Dashboard from './components/Dashboard'; // Updated Dashboard import
+import ParticipantView from './components/ParticipantView';
 import LoginModal from './components/LoginModal';
 import AboutModal from './components/AboutModal';
-import { Marker, EmotionType, AnalysisReport, User, LayerType } from './types';
+import { Marker, EmotionType, AnalysisReport, User, LayerType, Project } from './types';
 import { analyzeWebsite } from './services/geminiService';
-import { supabase, signOut } from './services/supabaseService';
-import { Search, MonitorPlay, Lock, Info, AlertCircle, X } from 'lucide-react';
+import { supabase, signOut, createProject, getProjectById } from './services/supabaseService';
+import { Search, MonitorPlay, Lock, Info, AlertCircle, X, Save } from 'lucide-react';
 
 const ADMIN_EMAILS = ['me@marcovanhout.com', 'demadera@marcovanhout.com'];
 
 const App: React.FC = () => {
+  // Routing State
+  const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'participant'>('landing');
+  const [testProject, setTestProject] = useState<Project | null>(null);
+
+  // App State
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [markers, setMarkers] = useState<Marker[]>([]);
@@ -26,36 +32,57 @@ const App: React.FC = () => {
   const [activeLayer, setActiveLayer] = useState<LayerType>('emotions');
   const [showInfoBanner, setShowInfoBanner] = useState(true);
 
+  // Auth Listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const email = session.user.email?.toLowerCase();
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata.full_name,
-          isAdmin: email && ADMIN_EMAILS.some(admin => admin.toLowerCase() === email)
-        });
+        handleUserSession(session.user);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const email = session.user.email?.toLowerCase();
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata.full_name,
-          isAdmin: email && ADMIN_EMAILS.some(admin => admin.toLowerCase() === email)
-        });
+        handleUserSession(session.user);
+      } else {
+          setUser(null);
+          setCurrentView('landing');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleUserSession = (authUser: any) => {
+        const email = authUser.email?.toLowerCase();
+        const userData: User = {
+          id: authUser.id,
+          email: authUser.email!,
+          name: authUser.user_metadata.full_name,
+          isAdmin: email && ADMIN_EMAILS.some(admin => admin.toLowerCase() === email)
+        };
+        setUser(userData);
+        // If on landing, redirect to dashboard if logged in
+        // if (currentView === 'landing') setCurrentView('dashboard');
+  };
+
+  // URL Param Handler (For Test Invites)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Check for Test ID
+    const testId = params.get('test');
+    if (testId) {
+        // Load project for testing
+        getProjectById(testId).then(p => {
+            if (p) {
+                setTestProject(p);
+                setCurrentView('participant');
+            }
+        });
+        return; // Skip normal target check
+    }
+
+    // Check for Target URL (Demo Mode)
     const targetParam = params.get('target');
     if (targetParam) {
       setUrl(decodeURIComponent(targetParam));
@@ -64,16 +91,11 @@ const App: React.FC = () => {
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     let targetUrl = url.trim();
     if (!targetUrl) return;
-
-    if (!targetUrl.match(/^https?:\/\//i)) {
-      targetUrl = 'https://' + targetUrl;
-    }
+    if (!targetUrl.match(/^https?:\/\//i)) targetUrl = 'https://' + targetUrl;
     setUrl(targetUrl);
     setValidUrl(targetUrl);
-
     setHasStarted(true);
     setIsAnalyzing(true);
     setMarkers([]); 
@@ -82,7 +104,9 @@ const App: React.FC = () => {
 
     try {
       const result = await analyzeWebsite(targetUrl);
-      setMarkers(result.markers);
+      // Mark these as AI source
+      const aiMarkers = result.markers.map(m => ({...m, source: 'AI' as const}));
+      setMarkers(aiMarkers);
       setReport(result.report);
     } catch (error) {
       console.error("Gemini Analysis Error:", error);
@@ -99,6 +123,7 @@ const App: React.FC = () => {
         y: 20, 
         layer: 'emotions',
         emotion, 
+        source: 'AI', // Treat manual demo markers as AI/System for now
         comment: 'Manually added.' 
     };
     setMarkers(prev => [...prev, newMarker]);
@@ -107,16 +132,53 @@ const App: React.FC = () => {
   const handleManualLogin = (manualUser: User) => {
     setUser(manualUser);
     setShowLoginModal(false);
+    setCurrentView('dashboard');
   };
 
   const handleLogout = async () => {
     await signOut();
     setUser(null);
+    setCurrentView('landing');
+  };
+  
+  const handleSaveProject = async () => {
+      if (!user || !report) return;
+      if (confirm("Save this analysis to your dashboard?")) {
+          await createProject(user.id, validUrl, report, markers);
+          setCurrentView('dashboard');
+      }
   };
 
-  if (user?.isAdmin) {
-    return <AdminDashboard user={user} onLogout={handleLogout} />;
+  const handleNewAnalysis = () => {
+    setUrl('');
+    setValidUrl('');
+    setMarkers([]);
+    setReport(null);
+    setHasStarted(false);
+    setIsAnalyzing(false);
+    setActiveLayer('emotions');
+    setCurrentView('landing');
+  };
+
+  // --- VIEWS ---
+
+  if (currentView === 'participant' && testProject) {
+      return <ParticipantView project={testProject} onExit={() => { setTestProject(null); setCurrentView('landing'); }} />;
   }
+
+  if (currentView === 'dashboard' && user) {
+      return (
+        <Dashboard 
+            user={user} 
+            onLogout={handleLogout} 
+            onNavigateToAnalysis={(p) => {}}
+            onNavigateToTest={(p) => { setTestProject(p); setCurrentView('participant'); }}
+            onNewAnalysis={handleNewAnalysis}
+        />
+      );
+  }
+
+  // --- LANDING VIEW (Tool) ---
 
   return (
     <div className="flex h-screen w-screen bg-gray-50 text-gray-900 overflow-hidden">
@@ -179,13 +241,21 @@ const App: React.FC = () => {
             </button>
           </form>
 
-          <div className="w-32 flex justify-end">
+          <div className="w-32 flex justify-end gap-2">
+            {report && user && (
+                 <button 
+                   onClick={handleSaveProject}
+                   className="text-xs font-bold text-gray-500 hover:text-lem-orange flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg"
+                 >
+                   <Save size={12} /> Save
+                 </button>
+            )}
             <button 
-               onClick={() => setShowLoginModal(true)}
+               onClick={() => user ? setCurrentView('dashboard') : setShowLoginModal(true)}
                className="text-xs font-bold text-gray-400 hover:text-lem-orange flex items-center gap-1"
             >
               <Lock size={12} />
-              {user ? 'Admin Area' : 'Admin Login'}
+              {user ? 'My Dashboard' : 'Login'}
             </button>
           </div>
         </header>
@@ -221,6 +291,7 @@ const App: React.FC = () => {
                     activeLayer={activeLayer} 
                     setActiveLayer={setActiveLayer}
                     layoutStructure={report?.layoutStructure} 
+                    screenshot={report?.screenshot}
                  />
                </div>
              )}
